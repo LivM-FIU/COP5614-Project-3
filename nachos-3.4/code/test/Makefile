@@ -36,7 +36,8 @@ CPP = gcc -m32 -E
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt shell matmult sort fork join kill exec memory
+# all: halt shell matmult sort fork join kill exec memory
+all: halt shell matmult sort fork join kill exec memory concurrentRead cp open read write create
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.c > strt.s
