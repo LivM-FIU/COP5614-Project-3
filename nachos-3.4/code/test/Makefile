@@ -28,6 +28,7 @@ CPPFLAGS = $(INCDIR)
 PATH = $(GCCDIR):/lib:/usr/bin:/bin
 
 CC = $(GCCDIR)gcc -B../../../gnu-decstation-ultrix/
+COFF2NOFF = ../bin/coff2noff
 AS = $(GCCDIR)as
 LD = $(GCCDIR)ld
 
@@ -106,4 +107,39 @@ memory.o: memory.c
 	$(CC) $(CFLAGS) memory.c
 memory: memory.o start.o
 	$(LD) $(LDFLAGS) start.o memory.o -o memory.coff
-	../bin/coff2noff memory.coff memory 	
+	../bin/coff2noff memory.coff memory 
+
+open.o: open.c
+	$(CC) $(CFLAGS) -c open.c
+open: open.o start.o
+	$(LD) $(LDFLAGS) start.o open.o -o open.coff
+	../bin/coff2noff open.coff open
+
+read.o: read.c
+	$(CC) $(CFLAGS) -c read.c
+read: read.o start.o
+	$(LD) $(LDFLAGS) start.o read.o -o read.coff
+	../bin/coff2noff read.coff read
+
+write.o: write.c
+	$(CC) $(CFLAGS) -c write.c
+write: write.o start.o
+	$(LD) $(LDFLAGS) start.o write.o -o write.coff
+	../bin/coff2noff write.coff write
+
+concurrentRead.o: concurrentRead.c
+	$(CC) $(CFLAGS) -c concurrentRead.c
+
+concurrentRead: concurrentRead.o start.o
+	$(LD) $(LDFLAGS) start.o concurrentRead.o -o concurrentRead.coff
+	../bin/coff2noff concurrentRead.coff concurrentRead
+
+cp.o: cp.c
+	$(CC) $(CFLAGS) -c cp.c
+
+cp: cp.o start.o
+	$(LD) $(LDFLAGS) start.o cp.o -o cp.coff
+	$(COFF2NOFF) cp.coff cp
+
+
+
