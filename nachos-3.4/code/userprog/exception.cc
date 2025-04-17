@@ -395,25 +395,58 @@ int doRead(int fileId, char *buffer, int size)
 
 }
 
+// int doWrite(int fileId, char *buffer, int size)
+// {
+//     printf("System Call: [%d] invoked Write.\n", currentThread->space->pcb->pid);
+    
+//     // Check if fileId is valid
+//     if (fileId < 0 || fileId >= 20) {
+//         return -1;
+//     }
+    
+//     // Get the file from the open file table
+//     OpenFile* file = openFileTable[fileId];
+//     if (file == NULL || !openFileUsed[fileId]) {
+//         return -1; // File not open
+//     }
+    
+//     // Write to the file
+//     int bytesWritten = file->Write(buffer, size);
+    
+//     return bytesWritten;
+// }
+
+//Trinity testing doWrite
 int doWrite(int fileId, char *buffer, int size)
 {
+    //getting pid
+    int pid = currentThread->space->pcb->pid;
+
     printf("System Call: [%d] invoked Write.\n", currentThread->space->pcb->pid);
-    
-    // Check if fileId is valid
-    if (fileId < 0 || fileId >= 20) {
+
+    //if writing to console
+    if (fileId == ConsoleOutput) {
+        //looping buffer and print each character
+        for (int i = 0; i < size; i++) {
+            printg("%c", buffer[i]); 
+        }
+        //return number of characters written to console
+        return size;
+    }
+
+    //validating file is within bounds and is being used
+    if (fileId < 0 || fileId >= 20 || !openFileUsed[fileId]) {
+         return -1; //invalid
+    }
+    //getting file pointer from open file table
+    OpenFile* file = openFileTable[fileId];
+
+    //check pointer if null
+    if (file == NULL) {
         return -1;
     }
-    
-    // Get the file from the open file table
-    OpenFile* file = openFileTable[fileId];
-    if (file == NULL || !openFileUsed[fileId]) {
-        return -1; // File not open
-    }
-    
-    // Write to the file
-    int bytesWritten = file->Write(buffer, size);
-    
-    return bytesWritten;
+    // write to file
+    return file->Write(buffer, size);
 }
 
 
