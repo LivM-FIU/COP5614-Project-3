@@ -229,102 +229,88 @@ int doExec(char *filename)
     return 0;
 }
 
-// OpenFileId doOpen(char *fileName)
-// {
-//     printf("System Call: [%d] invoked Open\n", currentThread->space->pcb->pid);
-    
-//     // Open the file
-//     OpenFile *file = fileSystem->Open(fileName);
-//     if (file == NULL) {
-//         return -1; // Could not open the file
-//     }
-    
-//     // For this simple implementation, we'll just use a static array to store files
-//     // This is not ideal for a real OS but works for testing purposes
-//     // static OpenFile* openFileTable[20] = {NULL};
-//     // static bool openFileUsed[20] = {false};
-    
-//     // Find an available slot
-//     for (int i = 0; i < 20; i++) {
-//         if (!openFileUsed[i]) {
-//             openFileTable[i] = file;
-//             openFileUsed[i] = true;
-//             return i; // Return file descriptor
-//         }
-//     }
-    
-//     // If we get here, no slots are available
-//     delete file; // Clean up
-//     return -1;
-// }
-
-//trinity testing open indexing
 OpenFileId doOpen(char *fileName)
 {
+    // Printing sys call message
     printf("System Call: [%d] invoked Open\n", currentThread->space->pcb->pid);
 
-    // Try to open the file using the Nachos file system
+    // Try to open file w/ Nachos' filsys. Return pointer to object (OpenFile)
     OpenFile *file = fileSystem->Open(fileName);
+    // Check if file can be opened. If not, print error
     if (file == NULL) {
         printf("doOpen: Failed to open file %s\n", fileName);
         return -1;
     }
 
-    // Allocate an available file descriptor
-    for (int i = 2; i < 20; i++) { // skip 0 (stdin) and 1 (stdout)
+    // Loop through file descriptor table, start from 2 (skip 0/1 for stdin/stdout) 
+    for (int i = 2; i < 20; i++) { 
+        // Checking if current file descriptor slot is unsued
         if (!openFileUsed[i]) {
+            // Assign new opened file to slot
             openFileTable[i] = file;
+            // Mark the file descriptor as in use
             openFileUsed[i] = true;
+            // Return file desrciptor to user program
             return i;
         }
     }
 
-    // No available slots
+    // If there's no file descriptor slots available, delete the file object
     delete file;
+    // Return failure
     return -1;
 }
 
 
 bool doClose(int fileId)
 {
+    // Print syscall message
     printf("System Call: [%d] invoked Close.\n", currentThread->space->pcb->pid);
     
-    // Check if fileId is valid
+    // If fileId is outside valid range of file descriptory indices (0-19)
     if (fileId < 0 || fileId >= 20) {
-        return false;
+        return false; // Invalid file descriptor
     }
     
-    // Check if the file is actually open
+    // Check if file is not open or marked as unused
     if (openFileTable[fileId] == NULL || !openFileUsed[fileId]) {
-        return false;
+        return false; // Nothing to close
     }
     
-    // Close the file and mark the slot as available
+    // Close file by deleting OpenFile object
     delete openFileTable[fileId];
+    // Clear file table entry to show no file is associated with this descriptor 
     openFileTable[fileId] = NULL;
+    // Mark file descriptor slot as not in use
     openFileUsed[fileId] = false;
     
+    // Return true to show file was closed
     return true;
 }
 
 void doCreate(char *fileName)
 {
+    // Getting current PID
     int pid = currentThread->space->pcb->pid;
+    // Syscall print
     printf("Syscall Call: [%d] invoked Create.\n", pid);
     
-    // No need to read the string - it's already been read
+    //Try to create file with size 0 w/ Nachos file sys
+    // fileName already copied from user space 
     bool success = fileSystem->Create(fileName, 0);
     
+    // If file created, print success
     if (success) {
         printf("File Creation Successful: File [%s] created by PID [%d]\n", fileName, pid);
-        // Remove List() call if it doesn't exist in your FileSystem class
     } else {
+        //Failure message
         printf("File Creation Failure: File [%s] not created\n", fileName);
     }
     
+    //Write result (1 = success, -1 = failure) into reg2
     machine->WriteRegister(2, success ? 1 : -1);
     
-    // Clean up memory allocated by readString()
+    // Free allocated memory used for file 
     delete[] fileName;
 }
 
@@ -355,122 +341,86 @@ int doJoin(int pid) {
     return status;
 }
 
-// int doRead(int fileId, char *buffer, int size)
-// {
-//     printf("System Call: [%d] invoked Read.\n", currentThread->space->pcb->pid);
-    
-//     // Check if fileId is valid (between 0 and 19)
-//     if (fileId < 0 || fileId >= 20) {
-//         return -1;
-//     }
-    
-//     // Get the file from the open file table
-//     // You'll need to define the openFileTable in your class or as a global
-//     OpenFile* file = openFileTable[fileId];
-//     if (file == NULL) {
-//         return -1; // File not open
-//     }
-    
-//     // Read from the file
-//     int bytesRead = file->Read(buffer, size);
-    
-//     // Return the number of bytes read
-//     return bytesRead;
-// }
-
-
-//Trinity testing doRead
 int doRead(int fileId, char *buffer, int size)
 {
+    // Getting current PID
     int pid = currentThread->space->pcb->pid;
+    // Print syscall message
     printf("System Call: [%d] invoked Read.\n", pid);
 
-    // Handle Console Input (fd = 0)
+    // Handling for reading from Console Input (file descriptor 0)
     if (fileId == ConsoleInput) {
+        //Temp buffer to hold input console
         char line[256];
 
-        // Prompt if you want to debug:
-        // printf("ConsoleInput waiting...\n");
-
+        // Read from srtdin, return 0 for error
         if (fgets(line, sizeof(line), stdin) == NULL) {
-            return 0; // EOF or error
+            return 0; 
         }
 
+        // Getting number of characters used
         int len = strlen(line);
+        // If input larger than buffer size, trucante it 
         if (len > size) len = size;
+        // Copy into user buffer from input
         memcpy(buffer, line, len);
+        // Return number of bytes copied
         return len;
     }
 
-    // Validate fileId
+    // Validate fileId is within range and refers to open file
     if (fileId < 0 || fileId >= 20 || !openFileUsed[fileId]) {
         printf("doRead: Invalid or unopened fileId %d\n", fileId);
         return -1;
     }
 
+    // Getting OpenFile pointer
     OpenFile *file = openFileTable[fileId];
+
+    // Making sure pointer is not NULL
     if (file == NULL) {
         printf("doRead: fileId %d is NULL\n", fileId);
         return -1;
     }
 
-    // Use OpenFile's Read (which advances internal offset)
+    // Calling Read() which reads the size into buffer and advances offset
     int bytesRead = file->Read(buffer, size);
+
+    //Return number of bytes read
     return bytesRead;
 }
 
 
-// int doWrite(int fileId, char *buffer, int size)
-// {
-//     printf("System Call: [%d] invoked Write.\n", currentThread->space->pcb->pid);
-    
-//     // Check if fileId is valid
-//     if (fileId < 0 || fileId >= 20) {
-//         return -1;
-//     }
-    
-//     // Get the file from the open file table
-//     OpenFile* file = openFileTable[fileId];
-//     if (file == NULL || !openFileUsed[fileId]) {
-//         return -1; // File not open
-//     }
-    
-//     // Write to the file
-//     int bytesWritten = file->Write(buffer, size);
-    
-//     return bytesWritten;
-// }
-
-//Trinity testing doWrite
 int doWrite(int fileId, char *buffer, int size)
 {
-    //getting pid
+    //Getting current pid
     int pid = currentThread->space->pcb->pid;
 
+    //Print syscall 
     printf("System Call: [%d] invoked Write.\n", currentThread->space->pcb->pid);
 
-    //if writing to console
+    // Handling writing to Console Output (file descriptor 1)
     if (fileId == ConsoleOutput) {
-        //looping buffer and print each character
+        // Looping each character in buffer and print
         for (int i = 0; i < size; i++) {
             printf("%c", buffer[i]); 
         }
-        //return number of characters written to console
+        // Return number of characters written to console
         return size;
     }
 
-    //validating file is within bounds and is being used
+    // Validating fileId is within range and refers to open file
     if (fileId < 0 || fileId >= 20 || !openFileUsed[fileId]) {
-         return -1; //invalid
+         return -1; // Invalid
     }
-    //getting file pointer from open file table
+    // Getting OpenFile object from open file table
     OpenFile* file = openFileTable[fileId];
 
-    //check pointer if null
+    // Check if point is NULL, return error if NULL
     if (file == NULL) {
         return -1;
     }
-    // write to file
+    // Write data from buffer to file and return number of bytes written
     return file->Write(buffer, size);
 }
 
@@ -615,66 +565,44 @@ void ExceptionHandler(ExceptionType which)
         delete[] fileName;
         incrementPC();
     }
-    // else if ((which == SyscallException) && (type == SC_Read))
-    // {
-    // int fileId = machine->ReadRegister(4);    // File descriptor
-    // int virtAddr = machine->ReadRegister(5);  // Buffer address
-    // int size = machine->ReadRegister(6);      // Size to read
-    
-    // // Allocate buffer for data
-    // char *buffer = new char[size];
-    
-    // // Call the doRead function
-    // int bytesRead = doRead(fileId, buffer, size);
-    
-    // // Copy data from kernel space to user space
-    // if (bytesRead > 0) {
-    //     // Copy each byte to user memory
-    //     for (int i = 0; i < bytesRead; i++) {
-    //         machine->WriteMem(virtAddr + i, 1, buffer[i]);
-    //     }
-    // }
-    
-    // // Clean up
-    // delete[] buffer;
-    
-    // // Return bytes read
-    // machine->WriteRegister(2, bytesRead);
-    // incrementPC();
-    // }
-    //Trinity testing Read Handler
     else if ((which == SyscallException) && (type == SC_Read)) 
     {
         int fileId = machine->ReadRegister(4);     // File descriptor
         int virtAddr = machine->ReadRegister(5);   // Virtual address of user buffer
         int size = machine->ReadRegister(6);       // Number of bytes to read
     
+        // Validating input to ensure size is positive and address is not negative
         if (size <= 0 || virtAddr < 0) {
-            machine->WriteRegister(2, -1);
-            incrementPC();
-            return;
+            machine->WriteRegister(2, -1); // Error
+            incrementPC(); // Advance prog counter 
+            return; // Exit handler
         }
     
-        // Allocate kernel buffer
+        // Allocate kernel buffer for temp read data hold
         char *kernelBuffer = new char[size];
     
-        // Perform read (from file or console)
+        // Perform read
         int bytesRead = doRead(fileId, kernelBuffer, size);
     
-        // Write results back to user memory
+        // Copy data from kernel and back into user memory
         for (int i = 0; i < bytesRead; i++) {
+            // Write byte to user memory 
             bool success = machine->WriteMem(virtAddr + i, 1, kernelBuffer[i]);
             if (!success) {
+                // If failure, print error
                 printf("WriteMem failed at index %d\n", i);
-                machine->WriteRegister(2, -1);  // signal error to user
-                delete[] kernelBuffer;
-                incrementPC();
+                machine->WriteRegister(2, -1);  // Signal error to user
+                delete[] kernelBuffer; // Freeing kernel memory
+                incrementPC(); // Advance 
                 return;
             }
         }
     
+        // Free kernel buffer  
         delete[] kernelBuffer;
+        // Return number of bytes read to user
         machine->WriteRegister(2, bytesRead);
+        // Advance 
         incrementPC();
     }
     else if ((which == SyscallException) && (type == SC_Close))
@@ -684,78 +612,46 @@ void ExceptionHandler(ExceptionType which)
         machine->WriteRegister(2, success ? 0 : -1);
         incrementPC();
     }
-    // else if ((which == SyscallException) && (type == SC_Write))
-    // {
-    //     int fileId = machine->ReadRegister(4);    // File descriptor
-    //     int virtAddr = machine->ReadRegister(5);  // Buffer address
-    //     int size = machine->ReadRegister(6);      // Size to write
-        
-    //     // Allocate buffer for data
-    //     char *buffer = new char[size];
-        
-    //     // Copy data from user space to kernel space
-    //     for (int i = 0; i < size; i++) {
-    //         int value;
-    //         if (!machine->ReadMem(virtAddr + i, 1, &value)) {
-    //             printf("Error reading from user memory\n");
-    //             size = i;  // Only write what we've successfully read
-    //             break;
-    //         }
-    //         buffer[i] = (char)value;
-    //     }
-        
-    //     // Call the doWrite function
-    //     int bytesWritten = doWrite(fileId, buffer, size);
-        
-    //     // Clean up
-    //     delete[] buffer;
-        
-    //     // Return bytes written
-    //     machine->WriteRegister(2, bytesWritten);
-    //     incrementPC();
-    // }
-    // else
-    // {
-    //     printf("Unexpected user mode exception %d %d\n", which, type);
-    //     ASSERT(FALSE);
-    // }
-
-    //trinity testing write handler for size and ReadMem
     else if ((which == SyscallException) && (type == SC_Write)) {
         int fileId = machine->ReadRegister(4);    // File descriptor
         int virtAddr = machine->ReadRegister(5);  // User buffer address
         int size = machine->ReadRegister(6);      // Size to write
     
+        // Validating input 
         if (size <= 0 || virtAddr < 0) {
             machine->WriteRegister(2, -1);
             incrementPC();
             return;
         }
     
-        // Print diagnostic info
+        // Print for debugging  - Trinity
         printf("SC_Write: fileId = %d, virtAddr = %d, size = %d\n", fileId, virtAddr, size);
     
-        // Allocate kernel buffer
+        // Allocate kernel buffer to hold data 
         char *buffer = new char[size];
     
-        // Try to copy user data into kernel buffer
+        // Copying data from user space to kernel space
         for (int i = 0; i < size; i++) {
-            int value;
+            int value; // Temp hold value read from user memory
+            // Read byte form user buffer virtAddr + 1 
             if (!machine->ReadMem(virtAddr + i, 1, &value)) {
                 printf("SC_Write: Failed to read user memory at byte %d\n", i);
                 machine->WriteRegister(2, -1);  // indicate error to user
-                delete[] buffer;
-                incrementPC();
+                delete[] buffer; // Free kernel buffer
+                incrementPC(); // Advance
                 return;
             }
+            // Store byte read into kernel buffer
             buffer[i] = (char)value;
         }
     
-        // Safe to call doWrite now
+        // Write user data
         int bytesWritten = doWrite(fileId, buffer, size);
+        // Free kernel buffer
         delete[] buffer;
-    
+        // Return number of bytes written
         machine->WriteRegister(2, bytesWritten);
+        // Advance
         incrementPC();
     }
     
