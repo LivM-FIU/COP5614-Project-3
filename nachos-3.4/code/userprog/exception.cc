@@ -386,45 +386,36 @@ int doJoin(int pid) {
 //Trinity testing doRead
 int doRead(int fileId, char *buffer, int size)
 {
-    //getting current pid
     int pid = currentThread->space->pcb->pid;
-    printf("System Call: [%d] invoked Read.\n", currentThread->space->pcb->pid);
-    
-    //reading from stdin
-    if(fileId == ConsoleInput){
-        //loop 'size' times to read characters from console
-        for (int i = 0; i < size; i++) {
-            int c = getchar(); //switching to getchar from scanf
-            
-            if (c == EOF) return i;
-            
-            buffer[i] = (char)c;
+    printf("System Call: [%d] invoked Read.\n", pid);
 
-            if (c == '\n') {
-                return i + 1; //return number of character 
-            }
+    // Special case: console input
+    if (fileId == ConsoleInput) {
+        for (int i = 0; i < size; i++) {
+            int c = getchar();
+            if (c == EOF) return i;
+            buffer[i] = (char)c;
+            if (c == '\n') return i + 1;
         }
-        // return number of bytes read 
         return size;
     }
-    
-    //validating fileId is in bounds and slot is used
-    if (fileId < 0 || fileId >= 20 || !openFileUsed[fileId]) {
-        return -1; //invalid
-    }
 
-    //get OpenFile from sys-wide open file table 
-    OpenFile* file = openFileTable[fileId];
+    // Validate fileId
+    if (fileId < 0 || fileId >= 20 || !openFileUsed[fileId]) return -1;
 
-    //check if file pointer is valid
-    if (file == NULL) {
-        return -1;
-    }
+    OpenFile *file = openFileTable[fileId];
+    if (file == NULL) return -1;
 
-    //now read from file into buffer
-    return file->Read(buffer,size);
+    // Track offset per process per file (just for testing)
+    static int fileOffsets[20] = {0};  // VERY TEMPORARY!
+    int offset = fileOffsets[fileId];
 
+    int bytesRead = file->ReadAt(buffer, size, offset);
+    fileOffsets[fileId] += bytesRead;
+
+    return bytesRead;
 }
+
 
 // int doWrite(int fileId, char *buffer, int size)
 // {
@@ -690,39 +681,79 @@ void ExceptionHandler(ExceptionType which)
         machine->WriteRegister(2, success ? 0 : -1);
         incrementPC();
     }
-    else if ((which == SyscallException) && (type == SC_Write))
-    {
+    // else if ((which == SyscallException) && (type == SC_Write))
+    // {
+    //     int fileId = machine->ReadRegister(4);    // File descriptor
+    //     int virtAddr = machine->ReadRegister(5);  // Buffer address
+    //     int size = machine->ReadRegister(6);      // Size to write
+        
+    //     // Allocate buffer for data
+    //     char *buffer = new char[size];
+        
+    //     // Copy data from user space to kernel space
+    //     for (int i = 0; i < size; i++) {
+    //         int value;
+    //         if (!machine->ReadMem(virtAddr + i, 1, &value)) {
+    //             printf("Error reading from user memory\n");
+    //             size = i;  // Only write what we've successfully read
+    //             break;
+    //         }
+    //         buffer[i] = (char)value;
+    //     }
+        
+    //     // Call the doWrite function
+    //     int bytesWritten = doWrite(fileId, buffer, size);
+        
+    //     // Clean up
+    //     delete[] buffer;
+        
+    //     // Return bytes written
+    //     machine->WriteRegister(2, bytesWritten);
+    //     incrementPC();
+    // }
+    // else
+    // {
+    //     printf("Unexpected user mode exception %d %d\n", which, type);
+    //     ASSERT(FALSE);
+    // }
+
+    //trinity testing write handler for size and ReadMem
+    else if ((which == SyscallException) && (type == SC_Write)) {
         int fileId = machine->ReadRegister(4);    // File descriptor
-        int virtAddr = machine->ReadRegister(5);  // Buffer address
+        int virtAddr = machine->ReadRegister(5);  // User buffer address
         int size = machine->ReadRegister(6);      // Size to write
-        
-        // Allocate buffer for data
+    
+        if (size <= 0 || virtAddr < 0) {
+            machine->WriteRegister(2, -1);
+            incrementPC();
+            return;
+        }
+    
+        // Print diagnostic info
+        printf("SC_Write: fileId = %d, virtAddr = %d, size = %d\n", fileId, virtAddr, size);
+    
+        // Allocate kernel buffer
         char *buffer = new char[size];
-        
-        // Copy data from user space to kernel space
+    
+        // Try to copy user data into kernel buffer
         for (int i = 0; i < size; i++) {
             int value;
             if (!machine->ReadMem(virtAddr + i, 1, &value)) {
-                printf("Error reading from user memory\n");
-                size = i;  // Only write what we've successfully read
-                break;
+                printf("SC_Write: Failed to read user memory at byte %d\n", i);
+                machine->WriteRegister(2, -1);  // indicate error to user
+                delete[] buffer;
+                incrementPC();
+                return;
             }
             buffer[i] = (char)value;
         }
-        
-        // Call the doWrite function
+    
+        // Safe to call doWrite now
         int bytesWritten = doWrite(fileId, buffer, size);
-        
-        // Clean up
         delete[] buffer;
-        
-        // Return bytes written
+    
         machine->WriteRegister(2, bytesWritten);
         incrementPC();
     }
-    else
-    {
-        printf("Unexpected user mode exception %d %d\n", which, type);
-        ASSERT(FALSE);
-    }
+    
 }
