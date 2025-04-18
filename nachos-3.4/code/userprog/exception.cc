@@ -360,15 +360,15 @@ int doRead(int fileId, char *buffer, int size)
     printf("System Call: [%d] invoked Read.\n", currentThread->space->pcb->pid);
     
     //reading from stdin
-    if(fileID == ConsoleInput){
+    if(fileId == ConsoleInput){
         //loop 'size' times to read characters from console
         for (int i = 0; i < size; i++) {
-            char c;
-            //reading one character from input
-            scanf("%c", &c);
-            // store in buffer
-            buffer [i] = 6;
-            // if newline, stop reading
+            int c = getchar(); //switching to getchar from scanf
+            
+            if (c == EOF) return i;
+            
+            buffer[i] = (char)c;
+
             if (c == '\n') {
                 return i + 1; //return number of character 
             }
@@ -428,7 +428,7 @@ int doWrite(int fileId, char *buffer, int size)
     if (fileId == ConsoleOutput) {
         //looping buffer and print each character
         for (int i = 0; i < size; i++) {
-            printg("%c", buffer[i]); 
+            printf("%c", buffer[i]); 
         }
         //return number of characters written to console
         return size;
@@ -590,32 +590,67 @@ void ExceptionHandler(ExceptionType which)
         delete[] fileName;
         incrementPC();
     }
-    else if ((which == SyscallException) && (type == SC_Read))
+    // else if ((which == SyscallException) && (type == SC_Read))
+    // {
+    // int fileId = machine->ReadRegister(4);    // File descriptor
+    // int virtAddr = machine->ReadRegister(5);  // Buffer address
+    // int size = machine->ReadRegister(6);      // Size to read
+    
+    // // Allocate buffer for data
+    // char *buffer = new char[size];
+    
+    // // Call the doRead function
+    // int bytesRead = doRead(fileId, buffer, size);
+    
+    // // Copy data from kernel space to user space
+    // if (bytesRead > 0) {
+    //     // Copy each byte to user memory
+    //     for (int i = 0; i < bytesRead; i++) {
+    //         machine->WriteMem(virtAddr + i, 1, buffer[i]);
+    //     }
+    // }
+    
+    // // Clean up
+    // delete[] buffer;
+    
+    // // Return bytes read
+    // machine->WriteRegister(2, bytesRead);
+    // incrementPC();
+    // }
+    //Trinity testing Read Handler
+    else if ((which == SyscallException) && (type == SC_Read)) 
     {
-    int fileId = machine->ReadRegister(4);    // File descriptor
-    int virtAddr = machine->ReadRegister(5);  // Buffer address
-    int size = machine->ReadRegister(6);      // Size to read
+        int fileId = machine->ReadRegister(4);     // File descriptor
+        int virtAddr = machine->ReadRegister(5);   // Virtual address of user buffer
+        int size = machine->ReadRegister(6);       // Number of bytes to read
     
-    // Allocate buffer for data
-    char *buffer = new char[size];
-    
-    // Call the doRead function
-    int bytesRead = doRead(fileId, buffer, size);
-    
-    // Copy data from kernel space to user space
-    if (bytesRead > 0) {
-        // Copy each byte to user memory
-        for (int i = 0; i < bytesRead; i++) {
-            machine->WriteMem(virtAddr + i, 1, buffer[i]);
+        if (size <= 0 || virtAddr < 0) {
+            machine->WriteRegister(2, -1);
+            incrementPC();
+            return;
         }
-    }
     
-    // Clean up
-    delete[] buffer;
+        // Allocate kernel buffer
+        char *kernelBuffer = new char[size];
     
-    // Return bytes read
-    machine->WriteRegister(2, bytesRead);
-    incrementPC();
+        // Perform read (from file or console)
+        int bytesRead = doRead(fileId, kernelBuffer, size);
+    
+        // Write results back to user memory
+        for (int i = 0; i < bytesRead; i++) {
+            bool success = machine->WriteMem(virtAddr + i, 1, kernelBuffer[i]);
+            if (!success) {
+                printf("WriteMem failed at index %d\n", i);
+                machine->WriteRegister(2, -1);  // signal error to user
+                delete[] kernelBuffer;
+                incrementPC();
+                return;
+            }
+        }
+    
+        delete[] kernelBuffer;
+        machine->WriteRegister(2, bytesRead);
+        incrementPC();
     }
     else if ((which == SyscallException) && (type == SC_Close))
     {
