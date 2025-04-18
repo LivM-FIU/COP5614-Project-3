@@ -229,6 +229,36 @@ int doExec(char *filename)
     return 0;
 }
 
+// OpenFileId doOpen(char *fileName)
+// {
+//     printf("System Call: [%d] invoked Open\n", currentThread->space->pcb->pid);
+    
+//     // Open the file
+//     OpenFile *file = fileSystem->Open(fileName);
+//     if (file == NULL) {
+//         return -1; // Could not open the file
+//     }
+    
+//     // For this simple implementation, we'll just use a static array to store files
+//     // This is not ideal for a real OS but works for testing purposes
+//     // static OpenFile* openFileTable[20] = {NULL};
+//     // static bool openFileUsed[20] = {false};
+    
+//     // Find an available slot
+//     for (int i = 0; i < 20; i++) {
+//         if (!openFileUsed[i]) {
+//             openFileTable[i] = file;
+//             openFileUsed[i] = true;
+//             return i; // Return file descriptor
+//         }
+//     }
+    
+//     // If we get here, no slots are available
+//     delete file; // Clean up
+//     return -1;
+// }
+
+//trinity testing open indexing
 OpenFileId doOpen(char *fileName)
 {
     printf("System Call: [%d] invoked Open\n", currentThread->space->pcb->pid);
@@ -245,7 +275,8 @@ OpenFileId doOpen(char *fileName)
     // static bool openFileUsed[20] = {false};
     
     // Find an available slot
-    for (int i = 0; i < 20; i++) {
+    //changing index from 0 to 2 to test file descriptors
+    for (int i = 2; i < 20; i++) {
         if (!openFileUsed[i]) {
             openFileTable[i] = file;
             openFileUsed[i] = true;
