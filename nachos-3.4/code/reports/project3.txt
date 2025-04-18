@@ -1,0 +1,30 @@
+Group 1: Shamim Golafshan, Livan Miranda Labrada, Trinity Socorro
+
+CREATE
+    Design and How it Works:
+
+    Testing:
+
+
+OPEN
+    Design and How it Works:
+
+    Testing:
+
+
+CLOSE
+    Design and How it Works:
+
+    Testing:
+
+
+WRITE
+    Design and How it Works:
+
+    Testing:
+
+
+READ
+    Design and How it Works:
+
+    Testing:
