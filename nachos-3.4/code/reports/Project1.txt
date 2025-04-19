@@ -1,0 +1,92 @@
+Project 1
+
+Students:
+Livan Miranda, Shamim Golafshan, Trinity Socorro(Group1)
+
+
+#Question 1
+Implemented successfully, tested, and outputs as expected.
+
+#Question 2
+Implemented successfully, synchronized counter with no race conditions.
+
+#Question 3
+Implemented successfully and the output was as expected.
+
+#Question 4
+Implementation Overview
+To achieve the goal of this question, we made several key modifications to the Professor's Code on github:
+
+Elevator Implementation Key Modifications
+
+Elevator Thread Initialization:
+-Professor's Code: The professor's code provides the ElevatorThread function, which is responsible for creating the elevator object and calling its start() function.
+-Our Code: The code follows the same structure as the professor’s code to create the elevator thread and start the elevator. No major changes were made in this section.
+
+Elevator Movement and Passenger Handling:
+-Professor's Code: The code mentions the general movement of the elevator, checking for passengers, and going to the next floor. It also includes checking if there are active passengers or requests.
+-Our Code: We explicitly added more detailed logic to check for requests and handle passenger pickup and drop off efficiently, so that the elevator only moves for pending requests or if it is occupied. Yet, it does not work as intended, with the elevator failing to descend floors after picking up the first passenger. Despite testing different methods to fix this issue, the output remains the same. Some testing including changing the passenger handling to a while loop, and isolating where the occupancy counter is changed to hailElevator, unfortunately it continued to output incorrectly. 
+
+
+Synchronization with Locks and Conditions:
+-Professor's Code: The professor's code uses elevatorLock and condition variables (entering[] and leaving[]) for synchronization.
+-Our Code: We used the same approach, adding a more thorough management of waiting passengers. Passengers are picked up and dropped off with synchronization to ensure that the elevator doesn't pick up more passengers than its capacity.
+
+Passenger Request Handling:
+-Professor's Code: The professor’s code handles the basic structure of a passenger requesting an elevator ride, signaling when they are ready and waiting for the elevator to arrive at their floor.
+-Our Code: We implemented the hailElevator() function that properly manages passenger requests. This function adds passengers to the waiting list, signals the elevator to wake up, and waits for the elevator to pick them up.
+
+Passenger Thread and ID Generation:
+-Professor's Code: The professor's code generates a new PersonThread for each passenger and assigns them a unique ID.
+-Our Code: We followed the same structure, generating a unique ID for each passenger, creating a new Thread for each passenger, and calling hailElevator() to request a ride.
+
+
+OutPut:
+The following output was generated using our code:
+
+
+Elevator with 5 floors was created!
+Person 1 wants to go from floor 4 to 2
+Person 2 wants to go from floor 3 to 1
+Elevator arrives on floor 2
+Person 3 wants to go from floor 4 to 1
+Elevator arrives on floor 3
+Person 2 got into the elevator.
+Elevator arrives on floor 4
+Person 1 got into the elevator.
+Person 3 got into the elevator.
+Elevator arrives on floor 5
+Elevator arrives on floor 4
+Elevator arrives on floor 3
+Elevator arrives on floor 2
+Person 1 got out of the elevator.
+Elevator arrives on floor 1
+Person 2 got out of the elevator.
+Person 3 got out of the elevator.
+Elevator arrives on floor 2
+Elevator arrives on floor 3
+Elevator arrives on floor 4
+Elevator arrives on floor 5
+Elevator arrives on floor 4
+Elevator arrives on floor 3
+Elevator arrives on floor 2
+Elevator arrives on floor 1
+Elevator arrives on floor 2
+Elevator arrives on floor 3
+Elevator arrives on floor 4
+Elevator arrives on floor 5
+Elevator arrives on floor 4
+Elevator arrives on floor 3
+Elevator arrives on floor 2
+Elevator arrives on floor 1
+Elevator arrives on floor 2
+Elevator arrives on floor 3
+Elevator arrives on floor 4
+Elevator arrives on floor 5
+^C
+Cleaning up...
+
+
+Problem that we faced:
+Based on the output, the current issue is that the elevator continuously loops through every floor rather than stopping only when a passenger needs to be dropped off. Although it now correctly handles dropping off people, it does not efficiently determine when to stop, leading to unnecessary floor checks instead of halting precisely at the required destinations.
+

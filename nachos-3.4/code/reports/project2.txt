@@ -1,0 +1,139 @@
+Group 1: Shamim Golafshan, Livan Miranda Labrada, Trinity Socorro
+
+FORK:
+    Design and How it Works:
+For doFork, the function begins by printing a fork invocation message and then checks if there is enough memory available for the child process. It saves the parent's user state, creates a deep copy of the parent's address space for the child, and allocates a new PCB linked to the parent. Next, it copies the parent's registers to the child while setting the child's program counter (PC) to the provided function address. Finally, it forks the new thread to start execution in user mode and returns the child process ID (PID) to the parent.
+
+
+YIELD:
+    Design and How it Works:
+For doYield, the function prints a yield message indicating the current process is relinquishing CPU control, then calls the thread's yield function. This allows the scheduler to select another process for execution, facilitating cooperative multitasking without modifying the process's state.
+
+
+EXIT:
+    Design and How it works:
+For doExit, the function terminates the process by printing an exit message, updating the PCB (including cleaning up child relationships and storing the exit status), deallocating the PCB and the address space, and finally finishing the thread. This ensures that the process is cleanly removed from execution and its resources are released for reuse.
+
+
+---------------------------------------------------
+Testing Instructions for Fork, Yield, Exit Function
+---------------------------------------------------
+
+1. Build Nachos:
+   a. Navigate to the code directory:
+      cd code
+   b. Clean previous builds and compile:
+      make clean
+      make
+
+2. Initial Setup (First Time Only):
+   a. Copy the fork.c file from Canvas to the test directory.
+   b. In the test directory, compile the test:
+      make fork
+
+3. Run the Test:
+   a. Navigate to the userprog directory:
+      cd userprog
+   b. Execute the test:
+      ./nachos -x ../test/fork
+
+------
+Result
+------
+
+The debugging output from this function now exactly matches the expected output specified by the professor.
+
+EXEC:
+    Design and How it Works:
+        The exec system call is meant to replace the current running process with a new executable.
+        First, the filename string has to be translated from virtual memory to physical memory (this
+        is done in readString1 under exception.cc). Then, we need to make sure that the executable 
+        exists, which is done by the OpenFile executable line within the doKill function and the if-else
+        statement underneath it checks to ensure that the file can be accessed. If it passes this check, 
+        then AddrSpace is replaced allowing for physical page allocation and the loading of code/data 
+        from the NOFF file. If there is not enough memory, abort, which is handled by an if-else statement. 
+        The PCB is preserved (since we are not creating a new thread), and then the CPU registers are reset
+        for the new program (space->InitRegisters and space->RestoreState). Finally, execute the process. 
+
+-------------------------------------------
+Testing Instructions for the exec Function
+-------------------------------------------
+
+        1. Within nachos directory: cd code
+        2. make clean
+          2a. If new: make
+        3. cd userprog
+        4. ./nachos -x ../test/exec
+
+------
+Result
+------
+
+The debugging output from this function now exactly matches the expected output specified by the professor.
+
+
+KILL:
+    Design and How it Works:
+        System call kill is meant to terminate one process by its PID, and does so by first validating the
+        PID (in our implementation it is first retrieved). Then we print a confirmation that shows which process
+        invoked the call, followed by fetching the PCB of the target process to be killed (using pcbmanager).
+        We also have a if statement to handle the event that the process does not exist. There is also a special 
+        case handler (in the event that the process tries to kill itself), which is followed by cleaning the resources 
+        (address space and child PCB). The PCB manager and scheduler are then updated and this is followed by 
+        returning the status to the calling process.
+
+        Besides implementing kill in the exception.cc script (doKill and ensuring that the ExceptionHandler
+        had a else if for kill), kill was defined in syscall.h (#include SC_Kill 11). 
+
+        For testing kill, the test/Makefile was edited to include the necessary compiler flags. 
+
+
+-------------------------------------------
+Testing Instructions for the kill Function
+-------------------------------------------
+        1. Within nachos directory: cd code
+        2. make clean
+          2a. If new: make
+        3. cd userprog
+        4. ./nachos -x ../test/kill
+
+
+------
+Result
+------
+
+The debugging output from this function now exactly matches the expected output specified by the professor.
+
+
+JOIN:
+    Design and how it works:
+
+For doJoin, the function starts by printing a join invocation message and retrieving the child's PCB using the provided PID. It then verifies that the target process is indeed a child of the calling process. The function enters a loop where it repeatedly yields CPU control until the child process has terminated. Once the child has finished execution, the exit status is retrieved, the child's PCB is deallocated, and the exit status is returned to the calling process.
+
+-------------------------------------------
+Testing Instructions for the join Function
+-------------------------------------------
+
+1. Build Nachos:
+   a. Navigate to the code directory:
+      cd code
+   b. Clean previous builds and compile:
+      make clean
+      make
+
+2. Initial Setup (First Time Only):
+   a. Copy the join.c file from Canvas to the test directory.
+   b. In the test directory, compile the test:
+      make join
+
+3. Run the Test:
+   a. Navigate to the userprog directory:
+      cd userprog
+   b. Execute the test:
+      ./nachos -x ../test/join
+
+------
+Result
+------
+
+The debugging output from this function now exactly matches the expected output specified by the professor.
